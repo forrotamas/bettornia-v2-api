@@ -12,6 +12,9 @@ class Settings(BaseModel):
     enable_shadow_submit: bool = env_flag("ENABLE_SHADOW_SUBMIT", "1")
     enable_live_submit: bool = env_flag("ENABLE_LIVE_SUBMIT", "0")
 
+    # Second factor arming token (must be provided via header)
+    live_arm_token: str = os.getenv("LIVE_ARM_TOKEN", "")
+
     database_url: str = os.getenv("DATABASE_URL", "")
 
 settings = Settings()
