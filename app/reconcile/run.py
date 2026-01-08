@@ -67,7 +67,7 @@ def run_reconciliation(billing_account_id: UUID) -> tuple[UUID, Dict[str, Any]]:
                 """,
                 (str(billing_account_id), psycopg.types.json.Json(stats)),
             )
-            run_id = UUID(cur.fetchone()[0])
+            run_id = cur.fetchone()[0]
 
         conn.commit()
 
