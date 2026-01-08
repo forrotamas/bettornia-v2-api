@@ -12,18 +12,21 @@ def run_reconciliation(billing_account_id: UUID) -> tuple[UUID, Dict[str, Any]]:
 
     with psycopg.connect(settings.database_url) as conn:
         with conn.cursor() as cur:
+            # live attempts count
             cur.execute(
                 "select count(*) from bookmaker_live_attempts where billing_account_id=%s",
                 (str(billing_account_id),),
             )
             stats["live_attempts_total"] = int(cur.fetchone()[0])
 
+            # settlement events count
             cur.execute(
                 "select count(*) from settlement_events where billing_account_id=%s",
                 (str(billing_account_id),),
             )
             stats["settlement_events_total"] = int(cur.fetchone()[0])
 
+            # live without settlement
             cur.execute(
                 """
                 select count(*)
@@ -38,6 +41,7 @@ def run_reconciliation(billing_account_id: UUID) -> tuple[UUID, Dict[str, Any]]:
             )
             stats["live_without_settlement"] = int(cur.fetchone()[0])
 
+            # settlement without live
             cur.execute(
                 """
                 select count(*)
@@ -52,10 +56,13 @@ def run_reconciliation(billing_account_id: UUID) -> tuple[UUID, Dict[str, Any]]:
             )
             stats["settlement_without_live"] = int(cur.fetchone()[0])
 
+            # insert reconciliation run
             cur.execute(
                 """
-                insert into reconciliation_runs (billing_account_id, mode, status, stats_json, finished_at)
-                values (%s, 'manual', 'COMPLETED', %s::jsonb, now())
+                insert into reconciliation_runs
+                  (billing_account_id, mode, status, stats_json, finished_at)
+                values
+                  (%s, 'manual', 'COMPLETED', %s::jsonb, now())
                 returning id
                 """,
                 (str(billing_account_id), psycopg.types.json.Json(stats)),
@@ -66,6 +73,7 @@ def run_reconciliation(billing_account_id: UUID) -> tuple[UUID, Dict[str, Any]]:
 
     return run_id, stats
 
+
 def get_run(run_id: UUID) -> Dict[str, Any]:
     if not settings.database_url:
         raise RuntimeError("DATABASE_URL is required")
@@ -74,7 +82,15 @@ def get_run(run_id: UUID) -> Dict[str, Any]:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                select id, billing_account_id, mode, status, stats_json, error, started_at, finished_at
+                select
+                  id,
+                  billing_account_id,
+                  mode,
+                  status,
+                  stats_json,
+                  error,
+                  started_at,
+                  finished_at
                 from reconciliation_runs
                 where id=%s
                 """,
