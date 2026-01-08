@@ -7,16 +7,17 @@ from app.api.metrics_routes import router as metrics_router
 from app.adapters.bootstrap import bootstrap_adapters
 from app.obs.middleware import ObservabilityMiddleware
 from app.obs.metrics import app_info
-from app.core.config import settings
+from app.abuse.middleware import AbuseGuardMiddleware
 import os
 
 app = FastAPI(title="Bettornia v2 execution API (shadow-first)")
 
 bootstrap_adapters()
 
+# Abuse guards should run before metrics (so blocked requests are also measured as normal requests)
+app.add_middleware(AbuseGuardMiddleware)
 app.add_middleware(ObservabilityMiddleware)
 
-# Build info metric
 service = "bettornia-v2-api"
 version = os.getenv("APP_VERSION", "dev")
 app_info.labels(service=service, version=version).set(1)
